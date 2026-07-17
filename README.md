@@ -84,7 +84,7 @@ npm run pterodactyl:start
 ```text
 docsteamwicked/
 ├── design/concepts/         # 승인된 공개·모바일·관리자 화면 콘셉트
-├── public/                  # TeamWicked 로고와 로컬 브랜드 폰트
+├── public/                  # TeamWicked 로고와 정적 브랜드 에셋
 ├── scripts/
 │   └── pterodactyl-start.mjs
 ├── src/
