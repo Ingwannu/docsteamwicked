@@ -2,7 +2,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useCallback, useRef, useSyncExternalStore } from "react";
+import { useCallback, useRef, useSyncExternalStore, type MouseEvent } from "react";
 import { flushSync } from "react-dom";
 
 const emptySubscribe = () => () => undefined;
@@ -12,11 +12,12 @@ function AnimatedThemeButton({ className, showLabel = false }: { className: stri
   const { resolvedTheme, setTheme } = useTheme();
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const isDark = mounted && resolvedTheme === "dark";
+  const themeReady = mounted && (resolvedTheme === "light" || resolvedTheme === "dark");
+  const isDark = themeReady && resolvedTheme === "dark";
 
-  const toggleTheme = useCallback(() => {
+  const toggleTheme = useCallback((event: MouseEvent<HTMLButtonElement>) => {
     const button = buttonRef.current;
-    if (!mounted || !button) return;
+    if (!themeReady || !button) return;
 
     const nextTheme = isDark ? "light" : "dark";
     const root = document.documentElement;
@@ -33,14 +34,20 @@ function AnimatedThemeButton({ className, showLabel = false }: { className: stri
       return;
     }
 
-    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
-    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const visualViewport = window.visualViewport;
+    const viewportLeft = visualViewport?.offsetLeft ?? 0;
+    const viewportTop = visualViewport?.offsetTop ?? 0;
+    const viewportWidth = visualViewport?.width ?? window.innerWidth;
+    const viewportHeight = visualViewport?.height ?? window.innerHeight;
     const { top, left, width, height } = button.getBoundingClientRect();
-    const x = left + width / 2;
-    const y = top + height / 2;
+    const pointerTriggered = event.detail > 0 && (event.clientX !== 0 || event.clientY !== 0);
+    const x = viewportLeft + (pointerTriggered ? event.clientX : left + width / 2);
+    const y = viewportTop + (pointerTriggered ? event.clientY : top + height / 2);
+    const viewportRight = viewportLeft + viewportWidth;
+    const viewportBottom = viewportTop + viewportHeight;
     const maxRadius = Math.hypot(
-      Math.max(x, viewportWidth - x),
-      Math.max(y, viewportHeight - y),
+      Math.max(x - viewportLeft, viewportRight - x),
+      Math.max(y - viewportTop, viewportBottom - y),
     );
     const clipPath = [
       `circle(0px at ${x}px ${y}px)`,
@@ -59,9 +66,13 @@ function AnimatedThemeButton({ className, showLabel = false }: { className: stri
       flushSync(applyTheme);
     });
 
-    transition.finished.finally(cleanup);
+    let revealAnimation: Animation | undefined;
+    transition.finished.finally(() => {
+      revealAnimation?.cancel();
+      cleanup();
+    });
     transition.ready.then(() => {
-      root.animate(
+      revealAnimation = root.animate(
         { clipPath },
         {
           duration: transitionDuration,
@@ -71,7 +82,7 @@ function AnimatedThemeButton({ className, showLabel = false }: { className: stri
         } as KeyframeAnimationOptions,
       );
     });
-  }, [isDark, mounted, setTheme]);
+  }, [isDark, setTheme, themeReady]);
 
   return (
     <button
@@ -80,7 +91,7 @@ function AnimatedThemeButton({ className, showLabel = false }: { className: stri
       className={className}
       aria-label={isDark ? "라이트 모드로 전환" : "다크 모드로 전환"}
       aria-pressed={isDark}
-      disabled={!mounted}
+      disabled={!themeReady}
       onClick={toggleTheme}
     >
       {isDark ? <Sun aria-hidden="true" /> : <Moon aria-hidden="true" />}
