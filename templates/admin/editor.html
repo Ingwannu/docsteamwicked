@@ -1,0 +1,258 @@
+{% extends "admin/base.html" %}
+{% block title %}{% if doc %}문서 수정{% else %}새 문서{% endif %} · {{ site_name }} 관리{% endblock %}
+{% block content %}
+<div class="admin-header">
+    <h1>{% if doc %}문서 수정{% else %}새 문서 작성{% endif %}</h1>
+    <div class="admin-header-actions">
+        {% if doc %}
+        <a href="{{ url_for('admin_doc_versions', doc_id=doc.id) }}" class="btn btn-outline">버전 히스토리</a>
+        <a href="{{ url_for('admin_doc_preview', doc_id=doc.id) }}" class="btn btn-outline" target="_blank">미리보기</a>
+        {% endif %}
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline">목록</a>
+    </div>
+</div>
+
+<!-- AI Writing Panel -->
+<div class="ai-panel">
+    <div class="ai-panel-header">
+        <h3>AI 글쓰기 도우미</h3>
+        <span class="ai-badge">teamwicked-mimo</span>
+    </div>
+    <p class="ai-desc">주제를 입력하면 AI가 마크다운 문서를 자동으로 작성합니다. 5가지 모드로 다양한 문서를 생성할 수 있습니다.</p>
+    <div class="ai-mode-tabs">
+        <button class="ai-mode-tab active" data-mode="write">✍️ 글쓰기</button>
+        <button class="ai-mode-tab" data-mode="rewrite">개선하기</button>
+        <button class="ai-mode-tab" data-mode="outline">목차 제안</button>
+        <button class="ai-mode-tab" data-mode="faq">FAQ 작성</button>
+        <button class="ai-mode-tab" data-mode="troubleshoot">문제해결</button>
+    </div>
+    <div class="ai-input-area">
+        <textarea id="aiPrompt" placeholder="예: 도메인 연결 방법에 대한 문서를 작성해주세요. SSH 접속 가이드, MySQL 데이터베이스 생성 방법..."></textarea>
+    </div>
+    <div class="ai-loading" id="aiLoading">
+        <div class="ai-spinner"></div>
+        <span>AI가 작성 중입니다... 잠시만 기다려주세요.</span>
+    </div>
+    <div class="ai-result" id="aiResult"></div>
+    <div class="ai-actions">
+        <button class="btn btn-primary" id="aiGenerateBtn">AI 생성</button>
+        <button class="btn btn-success" id="aiApplyBtn" style="display: none;">에디터에 적용</button>
+        <button class="btn btn-outline" id="aiAppendBtn" style="display: none;">내용에 추가</button>
+    </div>
+</div>
+
+<!-- Editor Form -->
+<form method="POST" id="docForm">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-body">
+            <div class="form-group">
+                <label>제목</label>
+                <input type="text" name="title" class="form-control" value="{{ doc.title if doc else '' }}" required placeholder="문서 제목을 입력하세요">
+            </div>
+            <div class="form-group">
+                <label>설명 (메타)</label>
+                <input type="text" name="description" class="form-control" value="{{ doc.description if doc else '' }}" placeholder="문서에 대한 간략한 설명 (검색, 미리보기에 사용됨)">
+            </div>
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label>카테고리</label>
+                    <select name="category_id" class="form-control">
+                        <option value="">카테고리 없음</option>
+                        {% for cat in categories %}
+                        <option value="{{ cat.id }}" {% if doc and doc.category_id == cat.id %}selected{% endif %}>{{ cat.icon }} {{ cat.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>정렬 순서</label>
+                    <input type="number" name="sort_order" class="form-control" value="{{ doc.sort_order if doc else 0 }}" min="0">
+                </div>
+                <div class="form-group" style="display: flex; align-items: flex-end; padding-bottom: 20px; gap: 16px;">
+                    <div class="form-check">
+                        <input type="checkbox" name="is_published" id="isPublished" {% if doc and doc.is_published %}checked{% elif not doc %}checked{% endif %}>
+                        <label for="isPublished">공개</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" name="is_featured" id="isFeatured" {% if doc and doc.is_featured %}checked{% endif %}>
+                        <label for="isFeatured">추천</label>
+                    </div>
+                </div>
+            </div>
+            {% if doc %}
+            <div class="form-group">
+                <label>버전 메시지 (선택)</label>
+                <input type="text" name="version_message" class="form-control" placeholder="이번 수정에 대한 설명 (예: 오타 수정, 새 섹션 추가)">
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="editor-grid">
+        <div class="editor-pane">
+            <div class="editor-pane-header">
+                <span>마크다운 에디터</span>
+                <span style="font-size: 11px;">Markdown</span>
+            </div>
+            <div class="editor-pane-body">
+                <textarea name="content" id="contentEditor" placeholder="# 제목&#10;&#10;여기에 내용을 입력하세요...&#10;&#10;- 목록1&#10;- 목록2&#10;&#10;```bash&#10;echo hello&#10;```">{{ doc.content if doc else '' }}</textarea>
+            </div>
+        </div>
+        <div class="editor-pane">
+            <div class="editor-pane-header">
+                <span>실시간 미리보기</span>
+                <button type="button" class="btn btn-outline btn-sm" id="refreshPreview">새로고침</button>
+            </div>
+            <div class="editor-pane-body">
+                <div class="preview-body" id="previewBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-top: 24px; display: flex; gap: 12px;">
+        <button type="submit" class="btn btn-primary btn-lg">저장</button>
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline btn-lg">취소</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var editor = document.getElementById('contentEditor');
+    var preview = document.getElementById('previewBody');
+    var aiPrompt = document.getElementById('aiPrompt');
+    var aiResult = document.getElementById('aiResult');
+    var aiLoading = document.getElementById('aiLoading');
+    var aiGenerateBtn = document.getElementById('aiGenerateBtn');
+    var aiApplyBtn = document.getElementById('aiApplyBtn');
+    var aiAppendBtn = document.getElementById('aiAppendBtn');
+    var refreshBtn = document.getElementById('refreshPreview');
+    var currentMode = 'write';
+    var aiContent = '';
+
+    var placeholders = {
+        write: '예: 도메인 연결 방법에 대한 문서를 작성해주세요. SSH 접속 가이드...',
+        rewrite: '예: 더 자세하게 설명해주세요. 초보자도 이해할 수 있게 쉽게 다시 써주세요.',
+        outline: '예: FTP 사용법 (이 주제로 목차를 제안해주세요)',
+        faq: '예: 결제 및 환불 정책에 대한 FAQ를 작성해주세요',
+        troubleshoot: '예: 이메일 전송 실패 문제 해결 가이드'
+    };
+
+    // Tab switching
+    document.querySelectorAll('.ai-mode-tab').forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.ai-mode-tab').forEach(function(t) { t.classList.remove('active'); });
+            this.classList.add('active');
+            currentMode = this.dataset.mode;
+            aiPrompt.placeholder = placeholders[currentMode] || '';
+        });
+    });
+
+    // Render preview
+    var csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    function renderPreview() {
+        var content = editor.value;
+        fetch('/admin/ai/preview-markdown', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
+            body: 'content=' + encodeURIComponent(content)
+        })
+        .then(function(r) { return r.text(); })
+        .then(function(html) { preview.innerHTML = html; })
+        .catch(function() { preview.innerHTML = '<p style="color:var(--danger)">미리보기를 불러올 수 없습니다.</p>'; });
+    }
+
+    var previewTimer = null;
+    editor.addEventListener('input', function() {
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(renderPreview, 500);
+    });
+
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', renderPreview);
+    }
+
+    if (editor.value) renderPreview();
+
+    // AI Generate
+    aiGenerateBtn.addEventListener('click', function() {
+        var prompt = aiPrompt.value.trim();
+        if (!prompt) {
+            alert('프롬프트를 입력해주세요.');
+            return;
+        }
+
+        aiLoading.classList.add('show');
+        aiResult.classList.remove('show', 'error');
+        aiApplyBtn.style.display = 'none';
+        aiAppendBtn.style.display = 'none';
+        aiGenerateBtn.disabled = true;
+
+        fetch('/admin/ai/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({
+                prompt: prompt,
+                mode: currentMode,
+                current_content: editor.value
+            })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            aiLoading.classList.remove('show');
+            aiGenerateBtn.disabled = false;
+            if (data.error) {
+                aiResult.classList.add('show', 'error');
+                aiResult.textContent = '❌ ' + data.error;
+            } else {
+                aiContent = data.content;
+                aiResult.classList.add('show');
+                aiResult.textContent = aiContent;
+                aiApplyBtn.style.display = 'inline-flex';
+                aiAppendBtn.style.display = 'inline-flex';
+                aiResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        })
+        .catch(function(err) {
+            aiLoading.classList.remove('show');
+            aiGenerateBtn.disabled = false;
+            aiResult.classList.add('show', 'error');
+            aiResult.textContent = '❌ 오류: ' + err.message;
+        });
+    });
+
+    // Apply AI content (replace)
+    aiApplyBtn.addEventListener('click', function() {
+        if (aiContent) {
+            editor.value = aiContent;
+            renderPreview();
+            aiResult.classList.remove('show');
+            aiApplyBtn.style.display = 'none';
+            aiAppendBtn.style.display = 'none';
+            editor.scrollIntoView({ behavior: 'smooth' });
+        }
+    });
+
+    // Append AI content
+    aiAppendBtn.addEventListener('click', function() {
+        if (aiContent) {
+            editor.value += '\n\n' + aiContent;
+            renderPreview();
+            aiResult.classList.remove('show');
+            aiApplyBtn.style.display = 'none';
+            aiAppendBtn.style.display = 'none';
+        }
+    });
+
+    // Keyboard shortcut: Ctrl/Cmd + S to save
+    document.addEventListener('keydown', function(e) {
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            document.getElementById('docForm').submit();
+        }
+    });
+})();
+</script>
+{% endblock %}

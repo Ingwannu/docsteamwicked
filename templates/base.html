@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    <meta name="description" content="{% block meta_desc %}호스팅 서비스 문서{% endblock %}">
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}">
+    {% block head %}{% endblock %}
+    <meta name="csrf-token" content="{{ csrf_token() if csrf_token is defined }}">
+</head>
+<body>
+    {% block body %}{% endblock %}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

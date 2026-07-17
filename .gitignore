@@ -1,0 +1,18 @@
+# Deployment secrets and persistent runtime data
+.env
+instance/
+
+# Pterodactyl and Python runtime state
+.cache/
+.gunicorn/
+.local/
+__pycache__/
+*.py[cod]
+*.log
+
+# Local environments and export archives
+.venv/
+venv/
+archive-*.tar.gz
+*.sqlite
+*.sqlite3
