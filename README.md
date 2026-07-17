@@ -1,139 +1,107 @@
-# docsteamwicked
+# Wickedhost Docs
 
-GitBook 급의 호스팅 사이트 문서 시스템. Flask 기반으로 미학적 디자인, 다크모드, AI 글쓰기, 버전 히스토리 등을 제공합니다.
+TeamWicked의 공개 문서와 운영 편집 화면을 한 애플리케이션에서 제공하는 Next.js 문서 시스템입니다. 기존 SQLite 문서 데이터를 그대로 사용하면서 TeamWicked 웹사이트의 타이포그래피, 흰색·올리브·라임 색상 체계, 둥근 표면과 모바일 내비게이션을 적용했습니다.
 
-## ✨ 주요 기능
+## 주요 기능
 
-### 공개 문서 사이트
-- **미학적 디자인** — GitBook 스타일의 깔끔한 타이포그래피와 레이아웃
-- **다크모드** — 라이트/다크 테마 토글 (설정 저장)
-- **3단 레이아웃** — 좌측 카테고리 사이드바 + 본문 + 우츠 목차(TOC)
-- **읽기 진행도** — 상단 프로그레스 바
-- **실시간 검색** — `/` 키로 검색 포커스, 실시간 결과
-- **TOC 스크롤 스파이** — 우측 목차가 스크롤에 따라 활성화
-- **코드 복사** — 원클릭 코드 블록 복사
-- **콜아웃/어드모니션** — note, warning, tip, danger 블록
-- **브레드크럼** — 문서 경로 표시
-- **이전/다음 네비게이션** — 문서 간 이동
-- **문서 평가** — 👍/👎 피드백
-- **반응형** — 모바일 완벽 지원
+### 공개 문서
 
-### 관리자 페이지
-- **대시보드** — 문서 수, 공개/초안, 조회수, 피드백 통계
-- **드래그앤드롭 정렬** — 문서 순서를 드래그로 변경
-- **카테고리 관리** — 아이콘과 함께 추가/삭제
-- **마크다운 에디터** — 실시간 미리보기 분할 화면
-- **버전 히스토리** — 수정 이력 관리, 이전 버전 복원, 버전 비교
-- **문서 설명(메타)** — 검색/미리보기용 description
-- **추천 문서** — ⭐ 표시로 중요 문서 강조
-- **Ctrl/Cmd+S 저장** — 키보드 단축키
+- 서버 렌더링 문서, 카테고리 사이드바, 현재 문서 목차
+- 제목·설명·본문을 대상으로 하는 실시간 검색 (`/` 단축키)
+- 라이트/다크 테마, 모바일 메뉴·목차·하단 도크
+- GFM 마크다운, 제목 앵커, 표, 코드 복사
+- 이전·다음 문서 이동과 도움 여부 피드백
 
-### AI 글쓰기 (teamwicked-mimo)
-- **✍️ 글쓰기** — 주제 입력 시 전체 문서 자동 작성
-- **🔄 개선하기** — 기존 내용을 더 명확하게 재작성
-- **📋 목차 제안** — 주제에 대한 목차 생성
-- **❓ FAQ 작성** — Q&A 형식 문서 생성
-- **🔧 문제해결** — 트러블슈팅 가이드 생성
-- 생성된 내용을 에디터에 바로 적용 또는 추가
+### 관리자
 
-## 빠른 시작
+- 문서·공개 상태·조회·피드백 통계를 보여 주는 대시보드
+- 카테고리와 문서 생성·편집·삭제
+- 마크다운 편집, 공개 여부·순서·추천 문서 설정
+- 문서 버전 기록과 이전 버전 복원
+- TeamWicked AI API를 통한 작성·개선·목차·FAQ·문제 해결 초안 생성
+
+## 로컬 실행
+
+요구 사항은 Node.js 22 이상입니다.
 
 ```bash
-pip3 install -r requirements.txt
-python3 app.py
+npm ci
+cp .env.example .env
+npm run dev
 ```
 
-접속:
-- 공개 사이트: http://localhost:8080
-- 관리자: http://localhost:8080/admin/login
-- 관리자 계정: admin / (`.env` 파일 참조)
+- 공개 사이트: `http://localhost:3000`
+- 관리자: `http://localhost:3000/admin/login`
+- 데이터베이스: 기본값 `instance/docs.db`
 
-## 환경변수 (.env)
+운영 데이터와 비밀값을 덮어쓰지 않도록 `.env`와 `instance/`는 Git에서 제외됩니다. 새 데이터베이스는 앱 최초 접근 시 기존 Flask 버전과 호환되는 스키마로 자동 초기화됩니다.
 
-| 변수 | 설명 |
-|------|------|
-| `SECRET_KEY` | Flask 세션 암호화 키 |
+## 환경 변수
+
+| 변수 | 역할 |
+| --- | --- |
+| `SECRET_KEY` | 관리자 세션 서명 키. 운영에서는 충분히 긴 무작위 값이 필요합니다. |
 | `ADMIN_USERNAME` | 관리자 아이디 |
 | `ADMIN_PASSWORD` | 관리자 비밀번호 |
-| `AI_API_URL` | AI API 엔드포인트 |
-| `AI_MODEL` | AI 모델명 |
-| `TEAMWICKED_API_KEY` | teamwicked API 키 |
-| `SITE_NAME` | 사이트 이름 |
+| `AI_API_URL` | OpenAI 호환 TeamWicked AI API 기본 URL |
+| `AI_MODEL` | 문서 작성에 사용할 모델 이름 |
+| `TEAMWICKED_API_KEY` | 서버에서만 사용하는 AI API 키 |
+| `SITE_NAME` | 사이트 표시 이름 |
+| `SITE_URL` | 공개 기준 URL |
+| `DOCS_DB_PATH` | SQLite 파일 경로. 기본값은 `./instance/docs.db`입니다. |
+| `SERVER_PORT` | Pterodactyl이 할당한 내부 수신 포트 |
 
-## 마크다운 확장
+## 품질 검증
 
-코드 블록, 표, 인용구 외에도 어드모니션(콜아웃)을 지원합니다:
-
+```bash
+npm run typecheck
+npm run lint
+npm test
+npm run build
 ```
-!!! note
-    이것은 노트 콜아웃입니다.
 
-!!! warning
-    주의가 필요한 내용입니다.
-
-!!! tip
-    유용한 팁입니다.
-
-!!! danger
-    위험한 내용입니다.
-```
+`tests/deployment.test.mjs`는 Pterodactyl 시작 스크립트가 패키지 잠금 파일과 Git 커밋을 기준으로 설치·빌드를 캐시하고, 런타임 파일을 건드리지 않는지 확인합니다.
 
 ## 프로덕션 배포
 
+운영은 Pterodactyl server ID `269`에서 Node.js 22 이미지로 실행됩니다. 서버 시작 명령은 `main`을 shallow fetch/reset한 뒤 다음 스크립트를 실행합니다.
+
 ```bash
-pip3 install gunicorn
-gunicorn -w 4 -b 0.0.0.0:8080 app:app
+npm run pterodactyl:start
 ```
 
-Nginx를 리버스 프록시로 사용하는 것을 권장합니다.
+`scripts/pterodactyl-start.mjs`의 동작은 다음과 같습니다.
 
-### TeamWicked Pterodactyl
+1. `package-lock.json` 해시가 달라졌을 때만 `npm ci`를 수행합니다.
+2. 현재 Git 커밋이 달라졌을 때만 `next build`를 수행합니다.
+3. Pterodactyl의 `SERVER_PORT`로 `next start`를 실행합니다.
+4. 배포 캐시는 `.deploy/`에 두며 `.env`와 `instance/docs.db`는 수정하지 않습니다.
 
-운영 서버는 Pterodactyl server ID `269`이며 다음 변수로 이 저장소를 시작할 때마다 동기화합니다.
+공개 요청 흐름은 `docs.teamwicked.me` → Cloudflare `teamwicked-management` Tunnel → node2 WireGuard `10.200.2.2:50156` → Next.js입니다. 데이터베이스 백업은 Git 배포와 별도로 유지해야 합니다.
 
-| 변수 | 값 |
-|------|----|
-| `GIT_ADDRESS` | `https://github.com/Ingwannu/docsteamwicked.git` |
-| `BRANCH` | `main` |
-| `AUTO_UPDATE` | `1` |
-| `REQUIREMENTS_FILE` | `requirements.txt` |
+## 저장소 구조
 
-시작 순서는 저장소 fetch/reset, Python 의존성 설치, `flask init-db`, Gunicorn 실행입니다. `.env`와 `instance/docs.db`는 `.gitignore`로 제외하므로 코드 동기화 후에도 운영 비밀값과 문서 데이터가 유지됩니다.
+```text
+docsteamwicked/
+├── design/concepts/         # 승인된 공개·모바일·관리자 화면 콘셉트
+├── public/                  # TeamWicked 로고와 로컬 브랜드 폰트
+├── scripts/
+│   └── pterodactyl-start.mjs
+├── src/
+│   ├── app/                 # Next.js 라우트, API, 관리자 Server Actions
+│   ├── components/          # 공개 문서·관리자·공용 UI
+│   └── lib/                 # 인증, SQLite, 검증, 마크다운, HTTP 보안
+├── tests/                   # 배포 스크립트 회귀 테스트
+├── ARCHITECTURE.md          # 구조·데이터 흐름·기술 결정
+└── DESIGN_SYSTEM.md         # TeamWicked 디자인 적용 규칙과 QA 기준
+```
 
 ## 운영 결정 기록
 
 [Decision Log]
-- 목적과 의도: Pterodactyl을 재시작할 때 GitHub의 승인된 `main` 소스를 자동으로 배포한다.
-- 기존 구현 및 제약 조건: 운영 앱 파일은 서버 볼륨에만 있었고, 같은 볼륨의 `.env`와 `instance/docs.db`는 배포 중 보존해야 한다.
-- 검토한 주요 대안: 서버 파일 수동 업로드, Pterodactyl 재설치 스크립트, 시작 명령의 Git 동기화.
-- 선택한 방식: 공개 Git 저장소와 서버 시작 명령의 shallow fetch/reset을 사용한다.
-- 다른 대안 대신 이 방식을 선택한 이유: 별도 토큰 없이 재현 가능하고, 재설치 없이 매 재시작에 최신 코드를 보장한다.
-- 장점, 단점 및 영향: 배포가 단순하고 결정적이지만 `main`의 잘못된 커밋도 다음 재시작에 즉시 반영되므로 push 전 검증이 필수다.
-
-## 구조
-
-```
-docsteamwicked/
-├── app.py                  # Flask 메인 앱
-├── requirements.txt        # 의존성
-├── .env                    # 환경변수
-├── static/
-│   ├── css/
-│   │   ├── docs.css        # 공개 사이트 디자인 시스템
-│   │   ├── admin.css       # 관리자 디자인 시스템
-│   │   └── highlight.css   # 코드 하이라이팅
-│   └── js/
-│       ├── search.js       # 실시간 검색 + 단축키
-│       └── docs.js         # 다크모드, TOC, 진행도, 복사, 피드백
-└── templates/
-    ├── base.html
-    ├── index.html          # 공개 문서 페이지
-    └── admin/
-        ├── base.html
-        ├── login.html      # 로그인
-        ├── dashboard.html  # 대시보드 + 드래그앤드롭
-        ├── editor.html     # 에디터 + AI 글쓰기
-        └── versions.html   # 버전 히스토리
-```
-
-상세 구조와 데이터 흐름은 [`ARCHITECTURE.md`](ARCHITECTURE.md)를 참고합니다.
+- 목적과 의도: Pterodactyl 재시작만으로 검증된 GitHub `main`을 배포하고, 운영 문서와 비밀값은 계속 보존한다.
+- 기존 구현 및 제약 조건: 같은 볼륨에 소스, `.env`, SQLite DB가 있으며 Cloudflare Tunnel origin 포트는 유지해야 한다.
+- 검토한 주요 대안: 서버 파일 수동 업로드, 매 시작 전체 재설치, 컨테이너 이미지 빌드, Git 동기화와 변경 감지 빌드.
+- 선택한 방식: 시작 명령에서 저장소를 동기화하고 잠금 파일·커밋 기반 캐시를 적용한 Node 시작 스크립트를 사용한다.
+- 다른 대안 대신 이 방식을 선택한 이유: 현재 Pterodactyl 운영 방식을 유지하면서 배포 시간을 줄이고, 추적하지 않는 런타임 파일을 안전하게 분리할 수 있다.
+- 장점, 단점 및 영향: 재시작 배포가 단순하고 재현 가능하지만 `main`의 품질이 곧 운영 품질이므로 push 전 네 가지 검증 명령이 필수다.
