@@ -2,7 +2,7 @@
 
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { useCallback, useRef, useSyncExternalStore, type MouseEvent } from "react";
+import { useCallback, useRef, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 
 const emptySubscribe = () => () => undefined;
@@ -15,7 +15,7 @@ function AnimatedThemeButton({ className, showLabel = false }: { className: stri
   const themeReady = mounted && (resolvedTheme === "light" || resolvedTheme === "dark");
   const isDark = themeReady && resolvedTheme === "dark";
 
-  const toggleTheme = useCallback((event: MouseEvent<HTMLButtonElement>) => {
+  const toggleTheme = useCallback(() => {
     const button = buttonRef.current;
     if (!themeReady || !button) return;
 
@@ -35,23 +35,20 @@ function AnimatedThemeButton({ className, showLabel = false }: { className: stri
     }
 
     const visualViewport = window.visualViewport;
-    const viewportLeft = visualViewport?.offsetLeft ?? 0;
-    const viewportTop = visualViewport?.offsetTop ?? 0;
     const viewportWidth = visualViewport?.width ?? window.innerWidth;
     const viewportHeight = visualViewport?.height ?? window.innerHeight;
     const { top, left, width, height } = button.getBoundingClientRect();
-    const pointerTriggered = event.detail > 0 && (event.clientX !== 0 || event.clientY !== 0);
-    const x = viewportLeft + (pointerTriggered ? event.clientX : left + width / 2);
-    const y = viewportTop + (pointerTriggered ? event.clientY : top + height / 2);
-    const viewportRight = viewportLeft + viewportWidth;
-    const viewportBottom = viewportTop + viewportHeight;
+    const x = left + width / 2;
+    const y = top + height / 2;
+    const originX = Math.min(100, Math.max(0, (x / viewportWidth) * 100));
+    const originY = Math.min(100, Math.max(0, (y / viewportHeight) * 100));
     const maxRadius = Math.hypot(
-      Math.max(x - viewportLeft, viewportRight - x),
-      Math.max(y - viewportTop, viewportBottom - y),
+      Math.max(x, viewportWidth - x),
+      Math.max(y, viewportHeight - y),
     );
     const clipPath = [
-      `circle(0px at ${x}px ${y}px)`,
-      `circle(${maxRadius}px at ${x}px ${y}px)`,
+      `circle(0px at ${originX}% ${originY}%)`,
+      `circle(${maxRadius}px at ${originX}% ${originY}%)`,
     ];
 
     root.dataset.magicuiThemeVt = "active";
